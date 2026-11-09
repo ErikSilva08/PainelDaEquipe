@@ -1,0 +1,166 @@
+/*
+ * Tokens e primitivos no estilo shadcn/ui (button, input, badge, card, dialog),
+ * escritos em SCSS puro para manter o app leve. Se quiser os componentes
+ * oficiais para Angular, o port do shadcn é o spartan-ng (spartan.ng).
+ */
+:root {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --surface-2: #f8f9fb;
+  --ink: #17202e;
+  --muted: #5d6676;
+  --faint: #8b93a1;
+  --line: #e1e5eb;
+  --line-strong: #cdd3dc;
+  --primary: #1f4fd1;
+  --primary-ink: #ffffff;
+  --primary-soft: #e7eefc;
+  --danger: #c93434;
+  --danger-soft: #fbeaea;
+
+  /* status dos colaboradores (mesmas cores no escritório pixel) */
+  --st-livre: #8b93a1;
+  --st-trabalhando: #16936a;
+  --st-pausa: #c98303;
+  --st-reuniao: #7448d0;
+  --st-externo: #c23c6a;
+
+  /* prioridade */
+  --pr-baixa: #8b93a1;
+  --pr-media: #2f7fd6;
+  --pr-alta: #d9730d;
+  --pr-urgente: #c93434;
+
+  --radius: 10px;
+  --radius-sm: 7px;
+  --shadow-pop: 0 10px 30px -12px rgb(23 32 46 / 28%), 0 2px 6px -2px rgb(23 32 46 / 10%);
+  --font: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --pixel: 'Silkscreen', ui-monospace, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { margin: 0; line-height: 1.2; letter-spacing: -0.01em; }
+h1 { font-size: 1.45rem; font-weight: 700; }
+h2 { font-size: 1.05rem; font-weight: 650; }
+h3 { font-size: 0.95rem; font-weight: 600; }
+p { margin: 0; }
+a { color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.small { font-size: 0.82rem; }
+.row { display: flex; align-items: center; gap: 8px; }
+.grow { flex: 1; min-width: 0; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ---------- button ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 36px; padding: 0 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: var(--primary); color: var(--primary-ink);
+  font-weight: 600; font-size: 0.88rem;
+  cursor: pointer; white-space: nowrap;
+  transition: background-color .15s, border-color .15s, opacity .15s;
+  &:hover { background: #1a43b5; }
+  &:disabled { opacity: .5; cursor: not-allowed; }
+  &.secondary { background: var(--primary-soft); color: var(--primary); &:hover { background: #d9e4fb; } }
+  &.outline { background: var(--surface); color: var(--ink); border-color: var(--line-strong); &:hover { background: var(--surface-2); } }
+  &.ghost { background: transparent; color: var(--ink); &:hover { background: #e9edf2; } }
+  &.danger { background: var(--danger-soft); color: var(--danger); &:hover { background: #f6d9d9; } }
+  &.success { background: var(--st-trabalhando); &:hover { background: #127a58; } }
+  &.sm { height: 30px; padding: 0 10px; font-size: 0.82rem; }
+  &.icon { width: 36px; padding: 0; }
+  &.sm.icon { width: 30px; }
+}
+
+/* ---------- form ---------- */
+.field { display: grid; gap: 6px; }
+.label { font-size: 0.82rem; font-weight: 600; color: var(--muted); }
+.input, .select, .textarea {
+  width: 100%;
+  height: 38px; padding: 0 11px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  background: var(--surface);
+  transition: border-color .15s, box-shadow .15s;
+  &:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+}
+.textarea { height: auto; min-height: 84px; padding: 9px 11px; resize: vertical; }
+.form-grid { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+.form-grid .full { grid-column: 1 / -1; }
+@media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+
+/* ---------- badge ---------- */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 22px; padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.74rem; font-weight: 600;
+  background: #eef1f5; color: var(--muted);
+  white-space: nowrap;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+
+/* ---------- card ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+/* ---------- dialog ---------- */
+dialog.sheet {
+  width: min(640px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-pop);
+  &::backdrop { background: rgb(23 32 46 / 38%); }
+  @media (max-width: 560px) {
+    width: 100vw; max-width: 100vw; max-height: 92dvh;
+    margin: auto 0 0; border-radius: 16px 16px 0 0;
+  }
+}
+.sheet-head { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px 10px; }
+.sheet-body { padding: 8px 20px 20px; display: grid; gap: 16px; }
+.sheet-foot {
+  display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
+  padding: 14px 20px; border-top: 1px solid var(--line); background: var(--surface-2);
+}
+
+/* ---------- toast ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+  z-index: 100; padding: 10px 16px; border-radius: var(--radius-sm);
+  background: var(--ink); color: #fff; font-size: 0.88rem; box-shadow: var(--shadow-pop);
+  &.error { background: var(--danger); }
+}
+
+/* ---------- CDK drag and drop ---------- */
+.cdk-drag-preview {
+  box-shadow: var(--shadow-pop);
+  border-radius: var(--radius);
+  transform: rotate(-1.5deg);
+}
+.cdk-drag-placeholder { opacity: .35; }
+.cdk-drag-animating { transition: transform 200ms cubic-bezier(0, 0, .2, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

@@ -1,0 +1,117 @@
+<div class="head">
+  <div>
+    <h1>Quadro da equipe</h1>
+    <p class="muted summary">
+      {{ stats().open }} chamados abertos
+      @if (stats().late) { · <span class="late">{{ stats().late }} atrasados</span> }
+      · {{ stats().free }} {{ stats().free === 1 ? 'pessoa disponível' : 'pessoas disponíveis' }}
+    </p>
+  </div>
+  <p class="hint muted small">Arraste um chamado até uma pessoa para delegar. Solte em <strong>Revisão</strong> quando terminar.</p>
+</div>
+
+<div class="tabs" role="tablist" aria-label="Seções do quadro">
+  <button role="tab" [attr.aria-selected]="tab() === 'entrada'" (click)="tab.set('entrada')">Entrada <span>{{ store.inbox().length }}</span></button>
+  <button role="tab" [attr.aria-selected]="tab() === 'equipe'" (click)="tab.set('equipe')">Equipe <span>{{ store.members().length }}</span></button>
+  <button role="tab" [attr.aria-selected]="tab() === 'revisao'" (click)="tab.set('revisao')">Revisão <span>{{ store.review().length }}</span></button>
+</div>
+
+<div class="board" cdkDropListGroup [attr.data-tab]="tab()">
+  <!-- ===== Entrada ===== -->
+  <section class="col inbox" aria-label="Entrada de chamados">
+    <header class="col-head">
+      <h2>Entrada</h2>
+      <span class="count">{{ store.inbox().length }}</span>
+    </header>
+    <input class="input search" type="search" placeholder="Buscar chamado" [value]="filter()" (input)="filter.set($any($event.target).value)" aria-label="Buscar chamado" />
+    <div class="list" cdkDropList [cdkDropListData]="zInbox" [cdkDropListEnterPredicate]="canEnterInbox"
+         [cdkDropListSortingDisabled]="true" (cdkDropListDropped)="drop($event)">
+      @for (t of inbox(); track t.id) {
+        <app-task-card cdkDrag [cdkDragData]="t" (open)="open($event)" [task]="t" />
+      } @empty {
+        <div class="empty">
+          @if (filter()) { Nenhum chamado encontrado. } @else {
+            <p>Fila vazia.</p>
+            <button class="btn secondary sm" (click)="dialog.create()">Abrir chamado</button>
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- ===== Equipe ===== -->
+  <section class="team" aria-label="Equipe">
+    @for (m of store.members(); track m.id) {
+      <article class="card person" [attr.data-status]="m.status" [style.--st]="statusMeta[m.status].color"
+               cdkDropList [cdkDropListData]="zoneOf(m)" [cdkDropListEnterPredicate]="canEnterMember"
+               [cdkDropListSortingDisabled]="true" (cdkDropListDropped)="drop($event)">
+        <header class="p-head">
+          <app-avatar [avatar]="m.avatar" [size]="40" [status]="m.status" />
+          <div class="grow">
+            <a class="p-name" [routerLink]="['/membro', m.id]">{{ m.name }}</a>
+            <p class="p-status truncate">
+              <strong>{{ statusMeta[m.status].label }}</strong>
+              @if (statusLine(m); as line) { <span> · {{ line }}</span> }
+            </p>
+          </div>
+          <a class="btn ghost sm icon go" [routerLink]="['/membro', m.id]" [attr.aria-label]="'Abrir tela de ' + m.name">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </a>
+        </header>
+        <div class="p-tasks">
+          @for (t of activeTasks(m); track t.id) {
+            <app-task-card cdkDrag [cdkDragData]="t" [task]="t" [compact]="true"
+                           [focused]="m.currentTaskId === t.id" (open)="open($event)" />
+          } @empty {
+            <p class="drop-here">Sem atividades. Solte um chamado aqui</p>
+          }
+        </div>
+        @if (inReview(m); as n) {
+          <p class="p-foot small muted">{{ n }} em revisão</p>
+        }
+      </article>
+    } @empty {
+      <div class="empty card">
+        <p>Nenhum colaborador cadastrado.</p>
+        <a class="btn secondary sm" routerLink="/equipe">Cadastrar equipe</a>
+      </div>
+    }
+  </section>
+
+  <!-- ===== Revisão e concluídas ===== -->
+  <section class="col side" aria-label="Revisão e concluídas">
+    <div class="stack">
+      <header class="col-head">
+        <h2>Revisão</h2>
+        <span class="count">{{ store.review().length }}</span>
+      </header>
+      <div class="list review" cdkDropList [cdkDropListData]="zReview" [cdkDropListEnterPredicate]="canEnterReview"
+           [cdkDropListSortingDisabled]="true" (cdkDropListDropped)="drop($event)">
+        @for (t of store.review(); track t.id) {
+          <app-task-card cdkDrag [cdkDragData]="t" [task]="t" (open)="open($event)" />
+        } @empty {
+          <p class="drop-here">Solte aqui o que foi finalizado</p>
+        }
+      </div>
+    </div>
+    <div class="stack">
+      <header class="col-head">
+        <h2>Concluídas</h2>
+        <span class="count">{{ store.done().length }}</span>
+      </header>
+      <div class="list done" cdkDropList [cdkDropListData]="zDone" [cdkDropListEnterPredicate]="canEnterDone"
+           [cdkDropListSortingDisabled]="true" (cdkDropListDropped)="drop($event)">
+        @for (t of doneList(); track t.id) {
+          <app-task-card [task]="t" [compact]="true" (open)="open($event)" />
+        } @empty {
+          <p class="drop-here">Arraste da revisão para aprovar</p>
+        }
+      </div>
+      @if (store.done().length > 5) {
+        <button class="btn ghost sm more" (click)="showAllDone.set(!showAllDone())">
+          {{ showAllDone() ? 'Mostrar menos' : 'Ver todas' }}
+        </button>
+      }
+    </div>
+  </section>
+</div>

@@ -1,0 +1,37 @@
+<header class="bar">
+  <a routerLink="/" class="brand" aria-label="Painel da Equipe, início">
+    <span class="logo" aria-hidden="true"></span>
+    <span class="name">Painel da Equipe</span>
+  </a>
+  <nav class="nav" aria-label="Principal">
+    <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }">Quadro</a>
+    <a routerLink="/escritorio" routerLinkActive="on">Escritório</a>
+    <a routerLink="/equipe" routerLinkActive="on">Equipe</a>
+  </nav>
+  <span class="grow"></span>
+  @if (!store.online()) {
+    <span class="offline" role="status">Reconectando…</span>
+  }
+  <button type="button" class="btn" (click)="dialog.create()">
+    <span aria-hidden="true">+</span><span class="lbl">Novo chamado</span>
+  </button>
+</header>
+
+<main class="main">
+  @if (store.loaded()) {
+    <router-outlet />
+  } @else {
+    <div class="loading">
+      @if (store.online()) { Carregando… } @else {
+        <p><strong>Não foi possível conectar ao servidor.</strong></p>
+        <p class="muted">Inicie o backend com <code>npm start</code> na pasta <code>backend</code>. Tentando de novo a cada 3 segundos.</p>
+      }
+    </div>
+  }
+</main>
+
+<app-task-dialog />
+
+@if (store.toast(); as t) {
+  <div class="toast" [class.error]="t.error" role="status">{{ t.text }}</div>
+}

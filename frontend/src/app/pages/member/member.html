@@ -1,0 +1,151 @@
+@if (member(); as m) {
+  <div class="wrap">
+    <div class="topline">
+      <a routerLink="/" class="back small">‹ Quadro</a>
+      <label class="switch small">
+        <span class="muted">Tela de</span>
+        <select class="select" [ngModel]="m.id" (ngModelChange)="switchTo($event)" aria-label="Trocar colaborador">
+          @for (o of store.members(); track o.id) {
+            <option [value]="o.id">{{ o.name }}</option>
+          }
+        </select>
+      </label>
+    </div>
+
+    <!-- ===== identidade + status ===== -->
+    <section class="card me" [style.--st]="statusMeta[m.status].color">
+      <div class="who">
+        <app-avatar [avatar]="m.avatar" [size]="64" [status]="m.status" />
+        <div class="grow">
+          <h1>{{ m.name }}</h1>
+          <p class="muted">{{ m.role }}</p>
+        </div>
+      </div>
+
+      <div class="now" role="status">
+        <span class="dot"></span>
+        <p class="grow">
+          @switch (m.status) {
+            @case ('trabalhando') { Trabalhando em <strong>{{ focusTask()?.code }} {{ focusTask()?.title }}</strong> }
+            @case ('pausa') { Em pausa@if (m.statusNote) { · {{ m.statusNote }} } }
+            @case ('reuniao') { Em reunião@if (m.statusNote) { · {{ m.statusNote }} } }
+            @case ('externo') { Fora do escritório@if (m.statusNote) { · {{ m.statusNote }} } }
+            @default { Disponível para novas tarefas }
+          }
+          @if (m.statusUntil && m.status !== 'trabalhando' && m.status !== 'livre') { <span> até {{ hour(m.statusUntil) }}</span> }
+          <span class="faint small"> · {{ since(m.statusSince) }}</span>
+        </p>
+        @if (m.status === 'pausa' || m.status === 'reuniao' || m.status === 'externo') {
+          <button class="btn sm" (click)="back()">Voltei</button>
+        }
+      </div>
+
+      <div class="status-actions" role="group" aria-label="Alterar status">
+        @for (o of awayOptions; track o.key) {
+          <button class="btn outline sm" [class.on]="m.status === o.key" [style.--c]="statusMeta[o.key].color"
+                  [attr.aria-expanded]="away() === o.key" (click)="openAway(o.key)">
+            <span class="dot" [style.color]="statusMeta[o.key].color"></span>{{ o.label }}
+          </button>
+        }
+        @if (m.status !== 'livre') {
+          <button class="btn ghost sm" (click)="setStatus('livre')">Ficar disponível</button>
+        }
+      </div>
+
+      @if (away(); as key) {
+        @for (o of awayOptions; track o.key) {
+          @if (o.key === key) {
+            <form class="away" (ngSubmit)="confirmAway()">
+              <label class="field grow">
+                <span class="label">{{ key === 'pausa' ? 'Motivo' : 'Com quem / onde' }}</span>
+                <input class="input" name="note" [(ngModel)]="awayNote" [placeholder]="o.place" maxlength="140" />
+              </label>
+              <label class="field until">
+                <span class="label">Volto às</span>
+                <input class="input" type="time" name="until" [(ngModel)]="awayUntil" />
+              </label>
+              <button class="btn" type="submit">Confirmar {{ o.label.toLowerCase() }}</button>
+              <p class="faint small full">{{ o.hint }}</p>
+            </form>
+          }
+        }
+      }
+    </section>
+
+    <!-- ===== atividades ===== -->
+    <section class="tasks">
+      <h2>Minhas atividades <span class="count">{{ mine().length }}</span></h2>
+
+      @for (t of mine(); track t.id) {
+        <article class="card task" [class.focus]="m.currentTaskId === t.id" [style.--p]="prioMeta[t.priority].color">
+          <div class="t-head">
+            <span class="code">{{ t.code }}</span>
+            <span class="badge" [style.color]="prioMeta[t.priority].color"><span class="dot"></span>{{ prioMeta[t.priority].label }}</span>
+            <span class="grow"></span>
+            <span class="due" [attr.data-tone]="due(t).tone">{{ due(t).label }}</span>
+          </div>
+          <h3 class="t-title">{{ t.title }}</h3>
+          <p class="small muted">Para <strong>{{ t.client || 'cliente não informado' }}</strong>@if (t.requester) { · pedido por {{ t.requester }} }</p>
+          @if (t.assignees.length > 1) {
+            <p class="small muted">Junto com
+              @for (aid of t.assignees; track aid) {
+                @if (aid !== m.id) { <span class="mate">{{ store.memberMap().get(aid)?.name }}</span> }
+              }
+            </p>
+          }
+          @if (t.reviewNote) {
+            <p class="returned small"><strong>Ajuste pedido na revisão:</strong> {{ t.reviewNote }}</p>
+          }
+          @if (t.description) { <p class="desc">{{ t.description }}</p> }
+          @if (lastUpdate(t); as u) {
+            <p class="last small"><span class="faint">Última atualização {{ since(u.at) }}:</span> {{ u.text }}</p>
+          }
+
+          @if (writing() === t.id) {
+            <div class="composer">
+              <textarea class="textarea" rows="3" [(ngModel)]="updateText" placeholder="O que avançou? Algum bloqueio?"
+                        (keydown.control.enter)="publish(t)" (keydown.meta.enter)="publish(t)" autofocus></textarea>
+              <div class="row end">
+                <button class="btn ghost sm" (click)="writing.set(null)">Cancelar</button>
+                <button class="btn secondary sm" (click)="publish(t)" [disabled]="!updateText.trim()">Publicar atualização</button>
+              </div>
+            </div>
+          }
+
+          <div class="t-actions">
+            @if (m.currentTaskId === t.id && m.status === 'trabalhando') {
+              <span class="badge working"><span class="dot"></span>Em foco agora</span>
+            } @else {
+              <button class="btn outline sm" (click)="setStatus('trabalhando', t.id)">Trabalhar nesta</button>
+            }
+            <button class="btn ghost sm" (click)="startWriting(t)">Atualizar</button>
+            <button class="btn ghost sm" (click)="details(t)">Detalhes</button>
+            <span class="grow"></span>
+            <button class="btn sm" (click)="finish(t)">Finalizei · enviar para revisão</button>
+          </div>
+        </article>
+      } @empty {
+        <div class="card empty">
+          <p><strong>Nenhuma atividade com você.</strong></p>
+          <p class="muted small">Quando alguém arrastar um chamado para você no quadro, ele aparece aqui.</p>
+        </div>
+      }
+
+      @if (waiting().length) {
+        <h2 class="mt">Aguardando revisão <span class="count">{{ waiting().length }}</span></h2>
+        @for (t of waiting(); track t.id) {
+          <button class="card waiting" (click)="details(t)">
+            <span class="code">{{ t.code }}</span>
+            <span class="grow truncate">{{ t.title }}</span>
+            <span class="faint small">enviada {{ since(t.finishedAt!) }}</span>
+          </button>
+        }
+      }
+    </section>
+  </div>
+} @else {
+  <div class="wrap empty-page">
+    <p><strong>Colaborador não encontrado.</strong></p>
+    <a class="btn secondary sm" routerLink="/equipe">Ver equipe</a>
+  </div>
+}

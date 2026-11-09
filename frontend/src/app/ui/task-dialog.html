@@ -1,0 +1,169 @@
+<dialog #dlg class="sheet" (close)="onNativeClose()" (click)="backdrop($event)" aria-labelledby="task-dialog-title">
+  @if (editing()) {
+    <!-- ===== criar / editar ===== -->
+    <form (ngSubmit)="save()" #f="ngForm">
+      <div class="sheet-head">
+        <h2 id="task-dialog-title" class="grow">{{ isNew() ? 'Novo chamado' : 'Editar ' + task()?.code }}</h2>
+        <button type="button" class="btn ghost icon sm" (click)="dialog.close()" aria-label="Fechar">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="form-grid">
+          <label class="field full">
+            <span class="label">O que precisa ser feito</span>
+            <input class="input" name="title" [(ngModel)]="draft.title" required maxlength="160"
+                   placeholder="Ex.: Erro ao emitir boleto no módulo financeiro" autofocus />
+          </label>
+          <label class="field">
+            <span class="label">Para quem é a entrega</span>
+            <input class="input" name="client" [(ngModel)]="draft.client" placeholder="Cliente ou setor" />
+          </label>
+          <label class="field">
+            <span class="label">Solicitante</span>
+            <input class="input" name="requester" [(ngModel)]="draft.requester" placeholder="Quem abriu o chamado" />
+          </label>
+          <label class="field">
+            <span class="label">Prazo</span>
+            <input class="input" type="datetime-local" name="due" [(ngModel)]="draft.due" />
+          </label>
+          <div class="field">
+            <span class="label">Prioridade</span>
+            <div class="seg" role="radiogroup" aria-label="Prioridade">
+              @for (p of priorities; track p) {
+                <button type="button" role="radio" [attr.aria-checked]="draft.priority === p"
+                        [class.on]="draft.priority === p" [style.--c]="prioMeta[p].color"
+                        (click)="draft.priority = p">{{ prioMeta[p].label }}</button>
+              }
+            </div>
+          </div>
+          <label class="field full">
+            <span class="label">Especificações</span>
+            <textarea class="textarea" name="description" rows="5" [(ngModel)]="draft.description"
+                      placeholder="Contexto, passos para reproduzir, critérios de aceite..."></textarea>
+          </label>
+        </div>
+      </div>
+      <div class="sheet-foot">
+        <button type="button" class="btn outline" (click)="cancelEdit()">Cancelar</button>
+        <button type="submit" class="btn" [disabled]="!draft.title.trim()">{{ isNew() ? 'Criar chamado' : 'Salvar alterações' }}</button>
+      </div>
+    </form>
+  } @else if (task(); as t) {
+    <!-- ===== detalhes ===== -->
+    <div class="sheet-head">
+      <div class="grow">
+        <div class="row meta">
+          <span class="code">{{ t.code }}</span>
+          <span class="badge stage" [attr.data-stage]="t.stage">{{ stageLabel[t.stage] }}</span>
+          <span class="badge" [style.color]="prioMeta[t.priority].color"><span class="dot"></span>{{ prioMeta[t.priority].label }}</span>
+        </div>
+        <h2 id="task-dialog-title" class="title">{{ t.title }}</h2>
+      </div>
+      <button type="button" class="btn ghost icon sm" (click)="dialog.close()" aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="sheet-body">
+      <dl class="facts">
+        <div><dt>Para quem</dt><dd>{{ t.client || '—' }}</dd></div>
+        <div><dt>Solicitante</dt><dd>{{ t.requester || '—' }}</dd></div>
+        <div>
+          <dt>Prazo</dt>
+          <dd [attr.data-tone]="due().tone">{{ due().label }}@if (t.dueDate) {<span class="faint small"> · {{ dateTime(t.dueDate) }}</span>}</dd>
+        </div>
+      </dl>
+
+      @if (t.reviewNote && t.stage === 'andamento') {
+        <p class="returned"><strong>Devolvida na revisão:</strong> {{ t.reviewNote }}</p>
+      }
+
+      @if (t.description) {
+        <p class="desc">{{ t.description }}</p>
+      }
+
+      <section>
+        <h3 class="sec">Responsáveis</h3>
+        <div class="people">
+          @for (m of assignees(); track m.id) {
+            <span class="chip">
+              <app-avatar [avatar]="m.avatar" [size]="24" [status]="m.status" />
+              {{ m.name }}
+              @if (canDelegate()) {
+                <button type="button" class="x" (click)="store.unassign(t.id, m.id)" [attr.aria-label]="'Remover ' + m.name">✕</button>
+              }
+            </span>
+          } @empty {
+            <span class="muted small">Ninguém ainda. Arraste no quadro ou escolha abaixo.</span>
+          }
+          @if (canDelegate() && available().length) {
+            <select class="select add" #pick (change)="assign(t, pick.value); pick.value = ''" aria-label="Delegar para">
+              <option value="">+ Delegar para...</option>
+              @for (m of available(); track m.id) {
+                <option [value]="m.id">{{ m.name }}</option>
+              }
+            </select>
+          }
+        </div>
+      </section>
+
+      <section>
+        <h3 class="sec">Atualizações</h3>
+        @if (t.stage !== 'concluida') {
+          <div class="composer">
+            <textarea class="textarea" rows="2" [(ngModel)]="updateText" placeholder="Como está a atividade?"
+                      (keydown.control.enter)="publish(t)" (keydown.meta.enter)="publish(t)"></textarea>
+            <div class="row">
+              <select class="select author" [ngModel]="author()" (ngModelChange)="author.set($event)" aria-label="Publicar como">
+                <option [ngValue]="null">Publicar como coordenação</option>
+                @for (m of store.members(); track m.id) {
+                  <option [ngValue]="m.id">{{ m.name }}</option>
+                }
+              </select>
+              <button type="button" class="btn secondary sm" (click)="publish(t)" [disabled]="!updateText.trim()">Publicar</button>
+            </div>
+          </div>
+        }
+        <ol class="timeline">
+          @for (u of timeline(); track u.id) {
+            <li [class.sys]="u.kind === 'sistema'">
+              @if (u.kind === 'nota' && u.memberId) {
+                <app-avatar [avatar]="memberAvatar(u.memberId)" [size]="26" />
+              } @else {
+                <span class="tick"></span>
+              }
+              <div class="grow">
+                <p class="who small">
+                  @if (u.kind === 'nota') { <strong>{{ u.memberId ? memberName(u.memberId) : 'Coordenação' }}</strong> }
+                  <span class="faint">{{ since(u.at) }}</span>
+                </p>
+                <p class="txt">{{ u.text }}</p>
+              </div>
+            </li>
+          }
+        </ol>
+      </section>
+    </div>
+
+    <div class="sheet-foot">
+      @if (returning()) {
+        <input class="input grow" [(ngModel)]="returnNote" placeholder="O que precisa ser ajustado?" (keydown.enter)="sendBack(t)" />
+        <button type="button" class="btn outline" (click)="returning.set(false)">Cancelar</button>
+        <button type="button" class="btn danger" (click)="sendBack(t)">Devolver</button>
+      } @else {
+        <button type="button" class="btn ghost sm del" (click)="remove(t)">Excluir</button>
+        <span class="grow"></span>
+        <button type="button" class="btn outline" (click)="startEdit(t)">Editar</button>
+        @switch (t.stage) {
+          @case ('andamento') {
+            <button type="button" class="btn" (click)="finish(t)">Enviar para revisão</button>
+          }
+          @case ('revisao') {
+            <button type="button" class="btn outline" (click)="returning.set(true)">Devolver</button>
+            <button type="button" class="btn success" (click)="store.approve(t.id)">Aprovar e concluir</button>
+          }
+          @case ('concluida') {
+            <button type="button" class="btn outline" (click)="returning.set(true)">Reabrir</button>
+          }
+        }
+      }
+    </div>
+  }
+</dialog>

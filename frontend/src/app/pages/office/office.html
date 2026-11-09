@@ -1,0 +1,86 @@
+<div class="head">
+  <div>
+    <h1>Escritório</h1>
+    <p class="muted">
+      <span class="on-mouse">Passe o mouse sobre alguém para ver no que está trabalhando. Clique para abrir a tela da pessoa.</span>
+      <span class="on-touch">Toque em alguém para ver no que está trabalhando.</span>
+    </p>
+  </div>
+  <ul class="legend" aria-label="Legenda">
+    @for (s of legend; track s) {
+      <li><span class="dot" [style.color]="statusMeta[s].color"></span>{{ statusMeta[s].label }} <strong>{{ counts()[s] }}</strong></li>
+    }
+  </ul>
+</div>
+
+<div class="tools">
+  <div class="jump" role="group" aria-label="Ir para a sala">
+    <button class="btn outline sm" (click)="jump(0)">Trabalho</button>
+    <button class="btn outline sm" (click)="jump(1)">Reunião e descanso</button>
+  </div>
+  <div class="zoom" role="group" aria-label="Zoom do mapa">
+    <button class="btn outline sm icon" (click)="zoomBy(-0.5)" [disabled]="zoom() <= minZoom" aria-label="Diminuir zoom">−</button>
+    <span class="zoom-pct" aria-live="polite">{{ zoomPct() }}%</span>
+    <button class="btn outline sm icon" (click)="zoomBy(0.5)" [disabled]="zoom() >= maxZoom" aria-label="Aumentar zoom">+</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="stage" #stage>
+    <div class="inner">
+    <canvas #canvas (pointermove)="onMove($event)" (pointerleave)="onLeave($event)" (click)="onTap($event)"
+            role="img" aria-label="Escritório pixel com os personagens da equipe"></canvas>
+
+    @if (hovered(); as m) {
+      @if (tip(); as p) {
+        <div class="tip" [class.below]="p.below" [style.left.px]="p.x" [style.top.px]="p.y" [style.--st]="statusMeta[m.status].color">
+          <div class="tip-head">
+            <app-avatar [avatar]="m.avatar" [size]="30" [status]="m.status" />
+            <div class="grow">
+              <p class="tip-name">{{ m.name }}</p>
+              <p class="tip-status">{{ statusMeta[m.status].label }} <span class="faint">· {{ since(m.statusSince) }}</span></p>
+            </div>
+          </div>
+          @if (m.status === 'trabalhando' && taskOf(m); as t) {
+            <div class="tip-task">
+              <p class="small faint">{{ t.code }} · para {{ t.client || 'cliente não informado' }}</p>
+              <p class="tip-title">{{ t.title }}</p>
+              <p class="small due" [attr.data-tone]="due(t.dueDate).tone">{{ due(t.dueDate).label }}</p>
+            </div>
+          } @else if (m.statusNote || m.statusUntil) {
+            <p class="tip-note small">{{ m.statusNote }}@if (m.statusUntil) { <span class="muted"> · volta às {{ hour(m.statusUntil) }}</span> }</p>
+          }
+          <p class="small muted tip-foot">{{ openCount(m) }} {{ openCount(m) === 1 ? 'atividade' : 'atividades' }} em andamento
+            <a [routerLink]="['/membro', m.id]">Abrir tela</a>
+          </p>
+        </div>
+      }
+    }
+
+    </div>
+
+    @if (failed()) {
+      <p class="fail">Não foi possível carregar os sprites do escritório. Confira a pasta <code>public/pixel</code>.</p>
+    }
+  </div>
+
+  <aside class="side">
+    <section class="card box">
+      <h2>Fora do escritório</h2>
+      @for (m of away(); track m.id) {
+        <a class="away" [routerLink]="['/membro', m.id]">
+          <app-avatar [avatar]="m.avatar" [size]="32" [status]="m.status" />
+          <span class="grow">
+            <strong>{{ m.name }}</strong>
+            <span class="small muted block">{{ m.statusNote || 'Reunião externa' }}@if (m.statusUntil) { · volta às {{ hour(m.statusUntil) }} }</span>
+          </span>
+        </a>
+      } @empty {
+        <p class="small muted">Todo mundo está no escritório.</p>
+      }
+    </section>
+    <p class="credit small faint">
+      Personagens e móveis do projeto <a href="https://github.com/pixel-agents-hq/pixel-agents" target="_blank" rel="noopener">Pixel Agents</a> (licença MIT).
+    </p>
+  </aside>
+</div>

@@ -1,0 +1,17 @@
+{
+  "name": "painel-equipe",
+  "private": true,
+  "description": "Organização de chamados e atividades da equipe com quadro de delegação e escritório pixel",
+  "scripts": {
+    "setup": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "dev": "concurrently -k -n api,web -c blue,green \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm --prefix backend run dev",
+    "dev:web": "npm --prefix frontend start",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix backend start",
+    "prod": "npm run build && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}
